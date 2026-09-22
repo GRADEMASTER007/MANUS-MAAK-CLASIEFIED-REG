@@ -36,6 +36,9 @@ import {
   PillarDiscovery 
 } from './components/PillarDiscovery';
 import { 
+  DirectoryLandingPage 
+} from './components/DirectoryLandingPage';
+import { 
   DeliverablesExplorerModal 
 } from './components/DeliverablesExplorerModal';
 import { 
@@ -199,6 +202,16 @@ function resolveInitialCountry(countryList: Country[]): Country {
   return countryList.find((c: Country) => c.id === 'za') || countryList[0];
 }
 
+function resolveInitialPillar(): PillarType | 'all' {
+  if (typeof window === 'undefined') return 'all';
+  const routeMap: Record<string, PillarType> = {
+    '/business': 'business',
+    '/services': 'service',
+    '/property': 'property',
+  };
+  return routeMap[window.location.pathname.toLowerCase()] || 'all';
+}
+
 export function App() {
   const { profile, signIn, signOut } = useAuth();
   // 1. Regional Country State (Persisted in localStorage & Subdomain/GEO detected)
@@ -241,7 +254,7 @@ export function App() {
   }, []);
 
   // 3. Navigation & Filters
-  const [activePillar, setActivePillar] = useState<PillarType | 'all'>('all');
+  const [activePillar, setActivePillar] = useState<PillarType | 'all'>(resolveInitialPillar);
   const [currentView, setCurrentView] = useState<'portal' | 'vendor' | 'admin' | 'favorites'>('portal');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -277,7 +290,8 @@ export function App() {
       canonical.rel = 'canonical';
       document.head.appendChild(canonical);
     }
-    canonical.href = `https://${currentCountry.subdomain}.marketplacehub.company/${activePillar !== 'all' ? activePillar : ''}`;
+    const canonicalRoute = activePillar === 'service' ? 'services' : activePillar === 'business' ? 'business' : activePillar === 'property' ? 'property' : '';
+    canonical.href = `https://${currentCountry.subdomain}.marketplacehub.company/${canonicalRoute}`;
 
     // Update Geo Meta Tags
     let geoRegion = document.querySelector<HTMLMetaElement>('meta[name="geo.region"]');
@@ -802,6 +816,8 @@ export function App() {
     return Array.from(set);
   }, [listings]);
 
+  const isDirectoryLanding = activePillar === 'business' || activePillar === 'service' || activePillar === 'property';
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-amber-500 selection:text-white">
       {/* 1. Header Navigation */}
@@ -839,27 +855,53 @@ export function App() {
         {currentView === 'portal' && (
           <div className="space-y-8 pb-16">
             {/* Full-width Video Hero with Pillar Theming */}
-            <VideoHero
-              currentCountry={currentCountry}
-              activePillar={activePillar}
-              onSearch={(query) => {
-                setSearchQuery(query);
-                setAiFilteredIds(null);
-                setAiSummary(null);
-              }}
-              onOpenCountryModal={() => setCountryModalOpen(true)}
-              onOpenAISearch={() => setAiSearchModalOpen(true)}
-              onVoiceSearch={handleVoiceSearch}
-              isTranscribing={isTranscribing}
-            />
+            {!isDirectoryLanding && (
+              <VideoHero
+                currentCountry={currentCountry}
+                activePillar={activePillar}
+                onSearch={(query) => {
+                  setSearchQuery(query);
+                  setAiFilteredIds(null);
+                  setAiSummary(null);
+                }}
+                onOpenCountryModal={() => setCountryModalOpen(true)}
+                onOpenAISearch={() => setAiSearchModalOpen(true)}
+                onVoiceSearch={handleVoiceSearch}
+                isTranscribing={isTranscribing}
+              />
+            )}
 
-            <AdBanner ads={ads} currentCountryCode={currentCountry.isoCode} />
+            {!isDirectoryLanding && <AdBanner ads={ads} currentCountryCode={currentCountry.isoCode} />}
 
-            {!searchQuery && !aiFilteredIds && (
+            {!searchQuery && !aiFilteredIds && activePillar === 'all' && (
               <PillarDiscovery
                 onSelectPillar={(pillar) => {
                   setActivePillar(pillar);
                   setSelectedCategory('all');
+                  setAiFilteredIds(null);
+                  setAiSummary(null);
+                }}
+                onOpenPostListing={() => setPostListingModalOpen(true)}
+              />
+            )}
+
+            {!searchQuery && !aiFilteredIds && (activePillar === 'business' || activePillar === 'service' || activePillar === 'property') && (
+              <DirectoryLandingPage
+                pillar={activePillar}
+                currentCountry={currentCountry}
+                categories={categories}
+                cities={availableCities}
+                listingCount={filteredListings.length}
+                selectedCategory={selectedCategory}
+                selectedCity={selectedCity}
+                minPrice={minPrice}
+                maxPrice={maxPrice}
+                onCategoryChange={setSelectedCategory}
+                onCityChange={setSelectedCity}
+                onMinPriceChange={setMinPrice}
+                onMaxPriceChange={setMaxPrice}
+                onSearch={(query) => {
+                  setSearchQuery(query);
                   setAiFilteredIds(null);
                   setAiSummary(null);
                 }}
@@ -893,7 +935,7 @@ export function App() {
             )}
 
             {/* VIP Spotlight Carousel Section */}
-            {vipSpotlightListings.length > 0 && !searchQuery && !aiFilteredIds && (
+            {vipSpotlightListings.length > 0 && !searchQuery && !aiFilteredIds && activePillar === 'all' && (
               <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -928,7 +970,7 @@ export function App() {
             )}
 
             {/* Enhanced Category Discovery Grid */}
-            {!searchQuery && !aiFilteredIds && (
+            {!searchQuery && !aiFilteredIds && activePillar === 'all' && (
               <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">

@@ -42,4 +42,13 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(pillarDiscovery).toContain("Property directory");
     expect(app).toContain("<PillarDiscovery");
   });
+
+  it("keeps tailored filter language for each directory landing page", () => {
+    const directoryLanding = readProjectFile("src/components/DirectoryLandingPage.tsx");
+
+    expect(directoryLanding).toContain("What kind of business are you looking for?");
+    expect(directoryLanding).toContain("What needs to get done?");
+    expect(directoryLanding).toContain("What kind of property are you after?");
+    expect(directoryLanding).toContain("Apply filters");
+  });
 });
