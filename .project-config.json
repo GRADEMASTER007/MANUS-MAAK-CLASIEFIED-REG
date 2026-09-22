@@ -1,0 +1,42 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "server",
+    "db",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://43bBghG2aiLDFAJ.root:Mplm2ZTV30ufDJI194Uc@gateway05.us-east-1.prod.aws.tidbcloud.com:4000/DzgKMMchd5WKZGAUxecESR?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": [
+    "no_db_push"
+  ],
+  "git_remote": {
+    "repo_url": "https://7f0548f6b28a1758d9bf7be630d36cb4.artifacts.cloudflare.net/git/prod/DzgKMMchd5WKZGAUxecESR.git",
+    "expiration": "2026-09-23T22:12:16.789Z",
+    "token": "art_v2_x_dc6d6025fb28b9b43eaa5dd2064249a808da5a16?expires=1790201536",
+    "backend": "GIT_BACKEND_ARTIFACTS"
+  },
+  "name": "marketplace-hub",
+  "path": "/home/ubuntu/marketplace-hub",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "C9AW3id2iyhYAu26eJkn4V",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "7ija2smEW4yk37cJdiUCTF",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Grade Master",
+    "OWNER_OPEN_ID": "dJxuGBJAuvW6KiQay5KTYf",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "f80b322b-c1e8-4da7-afdb-d54317e55fda",
+    "VITE_APP_ID": "DzgKMMchd5WKZGAUxecESR",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "Marketplace Hub \u0026 Business Directory",
+    "VITE_FRONTEND_FORGE_API_KEY": "c3B5Scg62NzGeCR963oPK2",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}

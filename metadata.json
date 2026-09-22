@@ -1,0 +1,7 @@
+{
+  "name": "Market Place Hub: Global Multi-Sector Hub",
+  "description": "An international commerce ecosystem combining marketplace, business directory, property portal, motors, and services across Africa and the UAE. Features AI-powered search, real-time voice concierge, and a configurable multi-country commission engine.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
