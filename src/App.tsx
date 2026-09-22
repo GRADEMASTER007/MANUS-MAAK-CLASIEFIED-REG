@@ -734,6 +734,22 @@ export function App() {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   };
 
+  const handleUpdateListing = async (id: string, updates: Partial<Listing>) => {
+    let updatedListing: Listing | undefined;
+    setListings((prev) => prev.map((listing) => {
+      if (listing.id !== id) return listing;
+      updatedListing = { ...listing, ...updates };
+      return updatedListing;
+    }));
+    if (updatedListing && profile) {
+      try {
+        await saveListingToFirestore(updatedListing);
+      } catch (error) {
+        console.warn('Failed to sync seller listing change:', error);
+      }
+    }
+  };
+
   const handleUpdateBoostPlan = (id: string, updates: Partial<BoostPlan>) => {
     console.log('Update boost plan:', id, updates);
   };
@@ -1272,6 +1288,8 @@ export function App() {
             onOpenPostListing={() => setPostListingModalOpen(true)}
             onOpenBoostModal={(l) => setSelectedBoostListing(l)}
             onDeleteListing={(id) => setListings((prev) => prev.filter((item) => item.id !== id))}
+            onUpdateListing={handleUpdateListing}
+            onPreviewListing={(listing) => setSelectedListingDetail(listing)}
           />
         )}
 

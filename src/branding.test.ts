@@ -62,4 +62,17 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(app).toContain("distanceBetweenKm");
     expect(app).toContain("<DirectoryMapPanel");
   });
+
+  it("keeps seller management capabilities available across categories", () => {
+    const dashboard = readProjectFile("src/components/VendorDashboard.tsx");
+    const app = readProjectFile("src/App.tsx");
+
+    expect(dashboard).toContain("All selling channels");
+    expect(dashboard).toContain("Search your listings, categories, cities");
+    expect(dashboard).toContain("Publish selected");
+    expect(dashboard).toContain("Pause selected");
+    expect(dashboard).toContain("Business Services");
+    expect(dashboard).toContain("onUpdateListing");
+    expect(app).toContain("handleUpdateListing");
+  });
 });

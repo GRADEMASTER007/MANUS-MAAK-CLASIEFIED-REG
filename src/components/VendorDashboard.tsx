@@ -23,9 +23,18 @@ import {
   Calculator,
   Percent,
   TrendingDown,
-  X
+  X,
+  Search,
+  Filter,
+  PauseCircle,
+  PlayCircle,
+  Copy,
+  ExternalLink,
+  BarChart3,
+  MoreHorizontal,
+  CheckCircle2
 } from 'lucide-react';
-import { Country, Listing, Transaction, Order } from '../types';
+import { Country, Listing, Transaction, Order, PillarType } from '../types';
 import { formatPrice } from '../utils/currency';
 
 interface VendorDashboardProps {
@@ -36,6 +45,8 @@ interface VendorDashboardProps {
   onOpenPostListing: () => void;
   onOpenBoostModal: (listing: Listing) => void;
   onDeleteListing: (listingId: string) => void;
+  onUpdateListing?: (listingId: string, updates: Partial<Listing>) => void;
+  onPreviewListing?: (listing: Listing) => void;
 }
 
 export const VendorDashboard: React.FC<VendorDashboardProps> = ({
@@ -46,9 +57,15 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
   onOpenPostListing,
   onOpenBoostModal,
   onDeleteListing,
+  onUpdateListing,
+  onPreviewListing,
 }) => {
   const [activeTab, setActiveTab] = useState<'listings' | 'leads' | 'transactions' | 'membership' | 'referral' | 'revenue' | 'intelligence'>('listings');
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
+  const [listingQuery, setListingQuery] = useState('');
+  const [listingPillar, setListingPillar] = useState<PillarType | 'all'>('all');
+  const [listingStatus, setListingStatus] = useState<'all' | Listing['status']>('all');
+  const [listingNotice, setListingNotice] = useState('');
   const [kycModalOpen, setKycModalOpen] = useState(false);
   const [kycUploaded, setKycUploaded] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
@@ -191,6 +208,35 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
   const totalViews = listings.reduce((acc, l) => acc + l.views, 0);
   const totalLeads = listings.reduce((acc, l) => acc + l.leadsCount, 0) + leads.length;
   const activeBoostsCount = listings.filter((l) => l.featuredTier !== 'free').length;
+  const sellerPillars: Array<{ id: PillarType; label: string }> = [
+    { id: 'marketplace', label: 'Marketplace' },
+    { id: 'business', label: 'Business' },
+    { id: 'service', label: 'Services' },
+    { id: 'property', label: 'Property' },
+    { id: 'motors', label: 'Motors' },
+    { id: 'jobs', label: 'Jobs' },
+    { id: 'business_services', label: 'Business Services' },
+  ];
+  const filteredSellerListings = listings.filter((listing) => {
+    const query = listingQuery.trim().toLowerCase();
+    const matchesQuery = !query || [listing.title, listing.categoryName, listing.city, listing.subcategory].some((value) => value.toLowerCase().includes(query));
+    const matchesPillar = listingPillar === 'all' || listing.pillar === listingPillar;
+    const matchesStatus = listingStatus === 'all' || listing.status === listingStatus;
+    return matchesQuery && matchesPillar && matchesStatus;
+  });
+  const categorySummary = sellerPillars.map((pillar) => ({ ...pillar, count: listings.filter((listing) => listing.pillar === pillar.id).length }));
+
+  const updateSellerListing = (listingId: string, updates: Partial<Listing>) => {
+    onUpdateListing?.(listingId, updates);
+    setListingNotice('Listing changes saved. Public visibility will update shortly.');
+    window.setTimeout(() => setListingNotice(''), 2800);
+  };
+
+  const handleBulkStatus = (status: Listing['status']) => {
+    selectedListingIds.forEach((id) => onUpdateListing?.(id, { status }));
+    setListingNotice(`${selectedListingIds.length} listing${selectedListingIds.length === 1 ? '' : 's'} marked ${status}.`);
+    setSelectedListingIds([]);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -527,6 +573,32 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
       {/* TAB 1: LISTINGS TABLE */}
       {activeTab === 'listings' && (
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Live', value: listings.filter((listing) => listing.status === 'active').length, tone: 'text-emerald-600', icon: CheckCircle2 },
+              { label: 'Needs attention', value: listings.filter((listing) => listing.status === 'pending' || listing.status === 'paused').length, tone: 'text-amber-600', icon: AlertCircle },
+              { label: 'Total reach', value: totalViews.toLocaleString(), tone: 'text-sky-600', icon: Eye },
+              { label: 'Lead rate', value: `${totalViews ? ((totalLeads / totalViews) * 100).toFixed(1) : '0.0'}%`, tone: 'text-indigo-600', icon: BarChart3 },
+            ].map((metric) => {
+              const Icon = metric.icon;
+              return <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"><div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{metric.label}</span><Icon className={`h-4 w-4 ${metric.tone}`} /></div><div className="mt-2 text-xl font-black tabular-nums text-slate-900">{metric.value}</div></div>;
+            })}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+            <div className="mb-3 flex items-center justify-between gap-3"><div><h3 className="text-sm font-black text-slate-900">All selling channels</h3><p className="mt-0.5 text-[11px] text-slate-500">Manage every Marketplace Hub category from one console.</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">{listings.length} total</span></div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+              {categorySummary.map((category) => <button key={category.id} onClick={() => setListingPillar(category.id)} className={`rounded-xl border px-3 py-2 text-left transition ${listingPillar === category.id ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50 hover:border-slate-300'}`}><div className="truncate text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{category.label}</div><div className="mt-1 text-lg font-black text-slate-900">{category.count}</div></button>)}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={listingQuery} onChange={(event) => setListingQuery(event.target.value)} placeholder="Search your listings, categories, cities..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs font-semibold text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white" /></div>
+            <div className="flex items-center gap-2"><Filter className="h-4 w-4 text-slate-400" /><select value={listingStatus} onChange={(event) => setListingStatus(event.target.value as typeof listingStatus)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 outline-none"><option value="all">All statuses</option><option value="active">Live</option><option value="pending">Pending review</option><option value="paused">Paused</option><option value="sold">Sold / closed</option></select><button onClick={() => { setListingPillar('all'); setListingStatus('all'); setListingQuery(''); }} className="rounded-xl px-3 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100">Clear</button></div>
+          </div>
+
+          {listingNotice && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800"><Check className="h-4 w-4" />{listingNotice}</div>}
+
           {selectedListingIds.length > 0 && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-sm animate-in slide-in-from-top-2">
               <div className="flex items-center gap-3">
@@ -534,8 +606,9 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                   {selectedListingIds.length} Listings Selected
                 </span>
                 <div className="h-4 w-px bg-amber-200" />
-                <button className="text-[10px] font-bold text-amber-700 hover:underline">Bulk Bump (Free)</button>
-                <button className="text-[10px] font-bold text-amber-700 hover:underline">Apply Standard Boost</button>
+                <button onClick={() => handleBulkStatus('active')} className="text-[10px] font-bold text-amber-700 hover:underline">Publish selected</button>
+                <button onClick={() => handleBulkStatus('paused')} className="text-[10px] font-bold text-amber-700 hover:underline">Pause selected</button>
+                <button onClick={() => { const first = listings.find((listing) => selectedListingIds.includes(listing.id)); if (first) onOpenBoostModal(first); }} className="text-[10px] font-bold text-amber-700 hover:underline">Boost selected</button>
               </div>
               <button 
                 onClick={() => setSelectedListingIds([])}
@@ -554,7 +627,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                       <input 
                         type="checkbox" 
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedListingIds(listings.map(l => l.id));
+                          if (e.target.checked) setSelectedListingIds(filteredSellerListings.map(l => l.id));
                           else setSelectedListingIds([]);
                         }}
                         className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
@@ -569,7 +642,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {listings.map((l) => (
+                  {filteredSellerListings.map((l) => (
                     <tr key={l.id} className={`hover:bg-slate-50/60 transition-colors ${selectedListingIds.includes(l.id) ? 'bg-amber-50/40' : ''}`}>
                       <td className="p-4">
                         <input 
@@ -632,6 +705,9 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                             <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
                             <span>Boost</span>
                           </button>
+                          <button onClick={() => onPreviewListing?.(l)} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-sky-50 hover:text-sky-600" title="Preview listing"><ExternalLink className="h-4 w-4" /></button>
+                          <button onClick={() => updateSellerListing(l.id, { status: l.status === 'active' ? 'paused' : 'active' })} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" title={l.status === 'active' ? 'Pause listing' : 'Publish listing'}>{l.status === 'active' ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}</button>
+                          <button onClick={() => onOpenPostListing()} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600" title="Create another listing"><Copy className="h-4 w-4" /></button>
                           <button
                             onClick={() => onDeleteListing(l.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
