@@ -31,4 +31,15 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(viteConfig).toContain("outDir: 'dist/public'");
     expect(server).toContain("path.join(process.cwd(), 'dist', 'public')");
   });
+
+  it("keeps the homepage organized around the four core directories", () => {
+    const pillarDiscovery = readProjectFile("src/components/PillarDiscovery.tsx");
+    const app = readProjectFile("src/App.tsx");
+
+    expect(pillarDiscovery).toContain("Marketplace");
+    expect(pillarDiscovery).toContain("Business directory");
+    expect(pillarDiscovery).toContain("Services directory");
+    expect(pillarDiscovery).toContain("Property directory");
+    expect(app).toContain("<PillarDiscovery");
+  });
 });

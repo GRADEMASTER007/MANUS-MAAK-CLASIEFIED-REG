@@ -33,6 +33,9 @@ import {
   AdBanner 
 } from './components/AdBanner';
 import { 
+  PillarDiscovery 
+} from './components/PillarDiscovery';
+import { 
   DeliverablesExplorerModal 
 } from './components/DeliverablesExplorerModal';
 import { 
@@ -851,6 +854,18 @@ export function App() {
             />
 
             <AdBanner ads={ads} currentCountryCode={currentCountry.isoCode} />
+
+            {!searchQuery && !aiFilteredIds && (
+              <PillarDiscovery
+                onSelectPillar={(pillar) => {
+                  setActivePillar(pillar);
+                  setSelectedCategory('all');
+                  setAiFilteredIds(null);
+                  setAiSummary(null);
+                }}
+                onOpenPostListing={() => setPostListingModalOpen(true)}
+              />
+            )}
 
             {/* AI Search Filter Banner if active */}
             {aiSummary && (
