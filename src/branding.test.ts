@@ -51,4 +51,15 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(directoryLanding).toContain("What kind of property are you after?");
     expect(directoryLanding).toContain("Apply filters");
   });
+
+  it("keeps map browsing and radius controls connected to directory results", () => {
+    const mapPanel = readProjectFile("src/components/DirectoryMapPanel.tsx");
+    const app = readProjectFile("src/App.tsx");
+
+    expect(mapPanel).toContain("Browse on the map");
+    expect(mapPanel).toContain("['all', 5, 10, 25, 50]");
+    expect(mapPanel).toContain("AdvancedMarkerElement");
+    expect(app).toContain("distanceBetweenKm");
+    expect(app).toContain("<DirectoryMapPanel");
+  });
 });

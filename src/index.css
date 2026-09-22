@@ -30,6 +30,9 @@
 .pillar-discovery { padding-top: 28px; }
 .pillar-card { isolation: isolate; }
 .pillar-card::after { content: ''; position: absolute; inset: auto 0 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); opacity: .45; }
+.marketplace-map-pin { min-width: 44px; border: 2px solid #fff; border-radius: 999px; background: #0f172a; color: #fff; padding: 7px 9px; font: 800 11px/1 var(--font-body); text-align: center; box-shadow: 0 7px 18px rgba(15,23,42,.28); cursor: pointer; transition: transform .18s ease, background .18s ease; }
+.marketplace-map-pin:hover { transform: translateY(-2px) scale(1.04); background: #f59e0b; color: #0f172a; }
+.directory-map-panel { padding-top: 12px; }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }

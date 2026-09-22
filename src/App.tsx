@@ -39,6 +39,9 @@ import {
   DirectoryLandingPage 
 } from './components/DirectoryLandingPage';
 import { 
+  DirectoryMapPanel 
+} from './components/DirectoryMapPanel';
+import { 
   DeliverablesExplorerModal 
 } from './components/DeliverablesExplorerModal';
 import { 
@@ -212,6 +215,23 @@ function resolveInitialPillar(): PillarType | 'all' {
   return routeMap[window.location.pathname.toLowerCase()] || 'all';
 }
 
+const COUNTRY_MAP_CENTERS: Record<string, { lat: number; lng: number }> = {
+  ZA: { lat: -26.2041, lng: 28.0473 },
+  AE: { lat: 25.2048, lng: 55.2708 },
+  KE: { lat: -1.2864, lng: 36.8172 },
+  NG: { lat: 6.5244, lng: 3.3792 },
+  GH: { lat: 5.6037, lng: -0.1870 },
+};
+
+function distanceBetweenKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const earthRadiusKm = 6371;
+  const latDelta = ((b.lat - a.lat) * Math.PI) / 180;
+  const lngDelta = ((b.lng - a.lng) * Math.PI) / 180;
+  const haversine = Math.sin(latDelta / 2) ** 2
+    + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(lngDelta / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
 export function App() {
   const { profile, signIn, signOut } = useAuth();
   // 1. Regional Country State (Persisted in localStorage & Subdomain/GEO detected)
@@ -262,6 +282,7 @@ export function App() {
   const [sortBy, setSortBy] = useState<'boost' | 'price_asc' | 'price_desc' | 'date'>('boost');
   const [minPrice, setMinPrice] = useState<number | ''>('');
   const [maxPrice, setMaxPrice] = useState<number | ''>('');
+  const [radiusKm, setRadiusKm] = useState<number | 'all'>('all');
   const [aiFilteredIds, setAiFilteredIds] = useState<string[] | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
 
@@ -732,6 +753,20 @@ export function App() {
     );
   };
 
+  const directoryMapListings = useMemo(() => {
+    if (activePillar !== 'business' && activePillar !== 'property') return [];
+    return listings.filter((listing) => listing.status === 'active' && listing.pillar === activePillar);
+  }, [activePillar, listings]);
+
+  const directoryMapCenter = useMemo(() => {
+    const fallback = COUNTRY_MAP_CENTERS[currentCountry.isoCode] || { lat: -26.2041, lng: 28.0473 };
+    if (directoryMapListings.length === 0) return fallback;
+    return directoryMapListings.reduce(
+      (center, listing) => ({ lat: center.lat + listing.coordinates.lat / directoryMapListings.length, lng: center.lng + listing.coordinates.lng / directoryMapListings.length }),
+      { lat: 0, lng: 0 },
+    );
+  }, [currentCountry.isoCode, directoryMapListings]);
+
   // Filter listings for the current view & selected filters
   const filteredListings = useMemo(() => {
     return listings.filter((l) => {
@@ -759,6 +794,10 @@ export function App() {
       // Filter by Price Range
       if (minPrice !== '' && l.price < minPrice) return false;
       if (maxPrice !== '' && l.price > maxPrice) return false;
+
+      if ((activePillar === 'business' || activePillar === 'property') && radiusKm !== 'all') {
+        if (distanceBetweenKm(directoryMapCenter, l.coordinates) > radiusKm) return false;
+      }
 
       // Text query match
       if (searchQuery.trim()) {
@@ -802,7 +841,7 @@ export function App() {
 
       return 0;
     });
-  }, [listings, activePillar, aiFilteredIds, selectedCategory, selectedCity, searchQuery, sortBy, currentView]);
+  }, [listings, activePillar, aiFilteredIds, selectedCategory, selectedCity, searchQuery, sortBy, currentView, radiusKm, directoryMapCenter]);
 
   // VIP Spotlight Carousel listings (top tier boosted)
   const vipSpotlightListings = useMemo(() => {
@@ -828,6 +867,7 @@ export function App() {
         onSelectPillar={(pillar) => {
           setActivePillar(pillar);
           setSelectedCategory('all');
+          setRadiusKm('all');
           setAiFilteredIds(null);
           setAiSummary(null);
         }}
@@ -906,6 +946,17 @@ export function App() {
                   setAiSummary(null);
                 }}
                 onOpenPostListing={() => setPostListingModalOpen(true)}
+              />
+            )}
+
+            {!searchQuery && !aiFilteredIds && (activePillar === 'business' || activePillar === 'property') && (
+              <DirectoryMapPanel
+                listings={filteredListings}
+                currentCountry={currentCountry}
+                mapCenter={directoryMapCenter}
+                radiusKm={radiusKm}
+                onRadiusChange={setRadiusKm}
+                onSelectListing={(listing) => setSelectedListingDetail(listing)}
               />
             )}
 

@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/google.maps": "^3.66.3",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
