@@ -23,7 +23,7 @@ import {
   Globe,
   Waves
 } from 'lucide-react';
-import { BoostPlan, Category, Country, Listing, PillarType } from '../types';
+import { BoostPlan, BoostTierId, Category, Country, Listing, PillarType } from '../types';
 
 interface PostListingWizardProps {
   isOpen: boolean;
@@ -114,7 +114,7 @@ export const PostListingWizard: React.FC<PostListingWizardProps> = ({
   const [vendorEmail, setVendorEmail] = useState('contact@mybusiness.co.za');
 
   // Selected boost
-  const [selectedBoost, setSelectedBoost] = useState<'free' | 'bump' | 'week' | 'month' | 'three_months'>('week');
+  const [selectedBoost, setSelectedBoost] = useState<BoostTierId>('five_days');
 
   if (!isOpen) return null;
 
@@ -149,7 +149,7 @@ export const PostListingWizard: React.FC<PostListingWizardProps> = ({
       description: description || 'Quality offering listed on Market Place Hub (marketplacehub.company).',
       images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1000&q=80'],
       featuredTier: selectedBoost,
-      featuredDaysLeft: selectedBoost === 'three_months' ? 90 : selectedBoost === 'month' ? 30 : selectedBoost === 'week' ? 7 : 0,
+      featuredDaysLeft: boostPlans.find((plan) => plan.id === selectedBoost)?.durationDays || 0,
       verifiedVendor: true,
       vendor: {
         id: `v-${Date.now()}`,
@@ -164,6 +164,8 @@ export const PostListingWizard: React.FC<PostListingWizardProps> = ({
         responseRate: '15 mins',
         memberSince: '2026',
       },
+      allowPlatformCheckout,
+      platformCommissionRate: allowPlatformCheckout ? 0.05 : 0,
       datePosted: new Date().toISOString().split('T')[0],
       status: 'active',
       views: 1,
@@ -790,8 +792,8 @@ export const PostListingWizard: React.FC<PostListingWizardProps> = ({
 
               {/* Hybrid Transaction Choice */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Transaction Method & Alerts
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  How do you want to sell?
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
@@ -799,16 +801,16 @@ export const PostListingWizard: React.FC<PostListingWizardProps> = ({
                     onClick={() => setAllowPlatformCheckout(false)}
                     className={`p-3 rounded-xl border text-left transition-all ${!allowPlatformCheckout ? 'border-amber-600 bg-white shadow-sm ring-1 ring-amber-600' : 'border-slate-200 bg-slate-100'}`}
                   >
-                    <div className="font-bold text-xs">Direct Transaction</div>
-                    <div className="text-[10px] text-slate-500">Contact directly. 0% Commission.</div>
+                    <div className="font-bold text-xs">One-on-one sale</div>
+                    <div className="text-[10px] text-slate-500">Chat directly with buyers. 0% platform fee.</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setAllowPlatformCheckout(true)}
                     className={`p-3 rounded-xl border text-left transition-all ${allowPlatformCheckout ? 'border-amber-600 bg-white shadow-sm ring-1 ring-amber-600' : 'border-slate-200 bg-slate-100'}`}
                   >
-                    <div className="font-bold text-xs">Platform Checkout</div>
-                    <div className="text-[10px] text-slate-500">Secure pay through Hub. Commission applies.</div>
+                    <div className="font-bold text-xs">Sell through Marketplace Hub</div>
+                    <div className="text-[10px] text-slate-500">PayFast / PayPal checkout with a simple 5% platform fee.</div>
                   </button>
                 </div>
                 <div className="flex items-center gap-2 pt-2">

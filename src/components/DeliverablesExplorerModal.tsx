@@ -486,10 +486,10 @@ const gatewayCodeSnippet = `
 import crypto from 'crypto';
 
 // 1. PAYFAST (South Africa ZAR Instant EFT & Cards)
-// Merchant ID: 11071120 | Merchant Key: p6fi9ewdjk1js | Passphrase: abCd15ab92g1233bc1223
+// Credentials are loaded server-side from managed environment secrets.
 export function generatePayFastSignature(
   data: Record<string, string>,
-  passPhrase: string = process.env.PAYFAST_PASSPHRASE || 'abCd15ab92g1233bc1223'
+  passPhrase: string = process.env.PAYFAST_PASSPHRASE || ''
 ) {
   let pfOutput = '';
   for (let key in data) {
@@ -505,10 +505,10 @@ export function generatePayFastSignature(
 }
 
 // 2. PAYPAL (Global, USD, AED, Diaspora - App: ALL-FIREBASE)
-// Client ID: BAAk0DorZSaDyTQbbltBVp4mGPBPrPkVrHSdMGy4BBXgB8jhpzZdlEY9PZ24lsfPZGD6Ki6NPyGqjyGePc
+// Client ID is loaded server-side from the managed environment.
 export async function createPayPalOrder(
-  clientId: string = process.env.PAYPAL_CLIENT_ID || 'BAAk0DorZSaDyTQbbltBVp4mGPBPrPkVrHSdMGy4BBXgB8jhpzZdlEY9PZ24lsfPZGD6Ki6NPyGqjyGePc',
-  clientSecret: string = process.env.PAYPAL_CLIENT_SECRET || 'EKfkUyx3qKyhX3VcZvxHZeGl1TJH0pIORvr2hBMzplRkzwC2B_-JU_fYbZkKDMlxWQRMcFwi2kEYhXpu',
+  clientId: string = process.env.PAYPAL_CLIENT_ID || '',
+  clientSecret: string = process.env.PAYPAL_CLIENT_SECRET || '',
   amount: number,
   currency: string = 'USD'
 ) {

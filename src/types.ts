@@ -44,6 +44,8 @@ export interface MarketplaceStats {
 
 export type PillarType = 'marketplace' | 'business' | 'service' | 'property' | 'motors' | 'jobs' | 'opportunities' | 'business_services' | 'advertising';
 
+export type BoostTierId = 'free' | 'bump' | 'five_days' | 'two_weeks' | 'week' | 'month' | 'three_months' | 'six_months' | 'one_year';
+
 export interface MotorDetails {
   make: string;
   model: string;
@@ -137,11 +139,14 @@ export interface Listing {
   currencyCode: string;
   description: string;
   images: string[];
-  featuredTier: 'free' | 'bump' | 'week' | 'month' | 'three_months';
+  featuredTier: BoostTierId;
   featuredExpiry?: string;
   featuredDaysLeft?: number;
   verifiedVendor: boolean;
   vendor: ListingVendor;
+  /** Sellers can route eligible sales through the platform or handle them directly. */
+  allowPlatformCheckout?: boolean;
+  platformCommissionRate?: number;
   datePosted: string;
   status: 'active' | 'pending' | 'paused' | 'sold';
   views: number;
@@ -197,7 +202,7 @@ export interface PriceHistoryPoint {
 }
 
 export interface BoostPlan {
-  id: 'free' | 'bump' | 'week' | 'month' | 'three_months';
+  id: BoostTierId;
   title: string;
   durationDays: number;
   priceUSD: number;
@@ -210,6 +215,7 @@ export interface BoostPlan {
   isQuickBump?: boolean;
 }
 
+/** Yoco is retained for historical transaction records; new checkout UI uses PayFast and PayPal only. */
 export type PaymentGateway = 'paypal' | 'payfast' | 'yoco';
 
 export interface Transaction {

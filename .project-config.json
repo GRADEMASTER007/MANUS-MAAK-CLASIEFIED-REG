@@ -7,7 +7,9 @@
   ],
   "dev_command": "pnpm run dev",
   "env_vars": {
-    "DATABASE_URL": "mysql://43bBghG2aiLDFAJ.root:Mplm2ZTV30ufDJI194Uc@gateway05.us-east-1.prod.aws.tidbcloud.com:4000/DzgKMMchd5WKZGAUxecESR?ssl={\"rejectUnauthorized\":true}"
+    "DATABASE_URL": "mysql://43bBghG2aiLDFAJ.root:Mplm2ZTV30ufDJI194Uc@gateway05.us-east-1.prod.aws.tidbcloud.com:4000/DzgKMMchd5WKZGAUxecESR?ssl={\"rejectUnauthorized\":true}",
+    "DRIZZLE_DATABASE_URL": "mysql://43bBghG2aiLDFAJ.root:Mplm2ZTV30ufDJI194Uc@gateway05.us-east-1.prod.aws.tidbcloud.com:4000/DzgKMMchd5WKZGAUxecESR?ssl={\"rejectUnauthorized\":true}",
+    "MANUS_WEBDEV_PROJECT_ID": "DzgKMMchd5WKZGAUxecESR"
   },
   "experiments": [
     "no_db_push"
@@ -28,10 +30,18 @@
     "OAUTH_SERVER_URL": "https://api.manus.im",
     "OWNER_NAME": "Grade Master",
     "OWNER_OPEN_ID": "dJxuGBJAuvW6KiQay5KTYf",
+    "PAYFAST_EMAIL": "waterkefirsa@gmail.com",
+    "PAYFAST_MERCHANT_ID": "11071120",
+    "PAYFAST_MERCHANT_KEY": "p6fi9ewdjk1js",
+    "PAYFAST_PASSPHRASE": "abCd15ab92g1233bc1223",
+    "PAYFAST_PDT_KEY": "f6657bf6-9300-5637-364b-6608b202628d",
+    "PAYPAL_APP_NAME": "ALL-FIREBASE",
+    "PAYPAL_CLIENT_ID": "BAAk0DorZSaDyTQbbltBVp4mGPBPrPkVrHSdMGy4BBXgB8jhpzZdlEY9PZ24lsfPZGD6Ki6NPyGqjyGePc",
+    "PAYPAL_CLIENT_SECRET": "EKfkUyx3qKyhX3VcZvxHZeGl1TJH0pIORvr2hBMzplRkzwC2B_-JU_fYbZkKDMlxWQRMcFwi2kEYhXpu",
     "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
     "VITE_ANALYTICS_WEBSITE_ID": "f80b322b-c1e8-4da7-afdb-d54317e55fda",
     "VITE_APP_ID": "DzgKMMchd5WKZGAUxecESR",
-    "VITE_APP_LOGO": "",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663914642622/ylchpZmzIPZDTGbX.png",
     "VITE_APP_TITLE": "Marketplace Hub \u0026 Business Directory",
     "VITE_FRONTEND_FORGE_API_KEY": "c3B5Scg62NzGeCR963oPK2",
     "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",

@@ -11,7 +11,7 @@ import {
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
-import { BoostPlan, Country, Listing, PaymentGateway, Transaction } from '../types';
+import { BoostPlan, BoostTierId, Country, Listing, PaymentGateway, Transaction } from '../types';
 
 interface BoostModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ interface BoostModalProps {
   listing: Listing | null;
   boostPlans: BoostPlan[];
   currentCountry: Country;
-  onActivateBoost: (listingId: string, planId: 'free' | 'bump' | 'week' | 'month' | 'three_months', newTransaction: Transaction) => void;
+  onActivateBoost: (listingId: string, planId: BoostTierId, newTransaction: Transaction) => void;
 }
 
 export const BoostModal: React.FC<BoostModalProps> = ({
@@ -30,7 +30,7 @@ export const BoostModal: React.FC<BoostModalProps> = ({
   currentCountry,
   onActivateBoost,
 }) => {
-  const [selectedPlanId, setSelectedPlanId] = useState<'free' | 'bump' | 'week' | 'month' | 'three_months'>('month');
+  const [selectedPlanId, setSelectedPlanId] = useState<BoostTierId>('month');
   
   // Default gateway based on currency: PayFast/Yoco for ZAR, PayPal for USD/AED/others
   const initialGateway: PaymentGateway = currentCountry.currencyCode === 'ZAR' ? 'payfast' : 'paypal';
@@ -39,6 +39,8 @@ export const BoostModal: React.FC<BoostModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'processing' | 'success'>('select');
   const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{ gateway: PaymentGateway; invoiceNumber: string; reference: string; orderId?: string } | null>(null);
 
   if (!isOpen || !listing) return null;
 
@@ -54,15 +56,56 @@ export const BoostModal: React.FC<BoostModalProps> = ({
 
   const planPrice = getPriceForCountry(selectedPlan);
 
+  const completePaidBoost = (invoiceNumber: string, reference: string) => {
+    const tx: Transaction = {
+      id: `tx-${Date.now()}`,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      vendorId: listing.vendor.id,
+      gateway: selectedGateway,
+      amount: planPrice,
+      currency: currentCountry.currencyCode,
+      planId: selectedPlan.id,
+      planTitle: selectedPlan.title,
+      status: 'completed',
+      date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      invoiceNumber,
+      reference,
+    };
+    setCompletedTransaction(tx);
+    setPaymentStep('success');
+    setPendingPayment(null);
+    onActivateBoost(listing.id, selectedPlan.id, tx);
+  };
+
+  const submitPayFastCheckout = (checkout: { gatewayEndpoint: string; fields: Record<string, string | number> }) => {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = checkout.gatewayEndpoint;
+    form.target = '_blank';
+    Object.entries(checkout.fields).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = String(value);
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+  };
+
   const handleProcessPayment = async () => {
     setIsProcessing(true);
-    setPaymentStep('processing');
-
+    setPaymentError(null);
     const invoiceNumber = `INV-${new Date().getFullYear()}-${currentCountry.isoCode}-${Math.floor(1000 + Math.random() * 9000)}`;
     const reference = `${selectedGateway.toUpperCase()}_${Date.now()}`;
 
     try {
-      // Call Express server checkout endpoint
+      if (selectedPlan.id === 'free') {
+        completePaidBoost(invoiceNumber, 'FREE_STANDARD');
+        return;
+      }
       const response = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,71 +116,57 @@ export const BoostModal: React.FC<BoostModalProps> = ({
           amount: planPrice,
           currency: currentCountry.currencyCode,
           countryCode: currentCountry.isoCode,
-          buyerEmail: listing.vendor.email || 'waterkefirsa@gmail.com',
+          invoiceNumber,
+          buyerEmail: listing.vendor.email,
           buyerName: listing.vendor.name || 'Vendor',
         }),
       });
-
       const data = await response.json();
-      const confirmedRef = data?.checkout?.reference || reference;
-      const confirmedInv = data?.checkout?.invoiceNumber || invoiceNumber;
+      if (!response.ok || data?.status === 'error') throw new Error(data?.error || 'Payment gateway unavailable.');
 
-      // Trigger Webhook simulation
-      await fetch(`/api/payments/webhook?gateway=${selectedGateway}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invoiceNumber: confirmedInv,
-          reference: confirmedRef,
-          status: 'PAID',
-          listingId: listing.id,
-          planId: selectedPlan.id,
-          gateway: selectedGateway,
-        }),
-      });
+      const checkout = data.checkout;
+      const confirmedInv = checkout?.invoiceNumber || invoiceNumber;
+      const confirmedRef = checkout?.reference || reference;
+      setPendingPayment({ gateway: selectedGateway, invoiceNumber: confirmedInv, reference: confirmedRef, orderId: checkout?.orderId });
+      setPaymentStep('processing');
 
-      const tx: Transaction = {
-        id: `tx-${Date.now()}`,
-        listingId: listing.id,
-        listingTitle: listing.title,
-        vendorId: listing.vendor.id,
-        gateway: selectedGateway,
-        amount: planPrice,
-        currency: currentCountry.currencyCode,
-        planId: selectedPlan.id,
-        planTitle: selectedPlan.title,
-        status: 'completed',
-        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        invoiceNumber: confirmedInv,
-        reference: confirmedRef,
-      };
-
-      setCompletedTransaction(tx);
-      setPaymentStep('success');
-
-      // Update listing in parent state
-      onActivateBoost(listing.id, selectedPlan.id, tx);
+      if (selectedGateway === 'payfast') {
+        submitPayFastCheckout(checkout);
+      } else if (checkout?.approvalUrl) {
+        window.open(checkout.approvalUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (err) {
       console.error('Payment error:', err);
-      // Fallback local completion
-      const tx: Transaction = {
-        id: `tx-${Date.now()}`,
-        listingId: listing.id,
-        listingTitle: listing.title,
-        vendorId: listing.vendor.id,
-        gateway: selectedGateway,
-        amount: planPrice,
-        currency: currentCountry.currencyCode,
-        planId: selectedPlan.id,
-        planTitle: selectedPlan.title,
-        status: 'completed',
-        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        invoiceNumber,
-        reference,
-      };
-      setCompletedTransaction(tx);
-      setPaymentStep('success');
-      onActivateBoost(listing.id, selectedPlan.id, tx);
+      setPaymentError(err instanceof Error ? err.message : 'Could not start payment. Please try again.');
+      setPaymentStep('select');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleVerifyPayment = async () => {
+    if (!pendingPayment) return;
+    setIsProcessing(true);
+    setPaymentError(null);
+    try {
+      const endpoint = pendingPayment.gateway === 'paypal'
+        ? '/api/payments/paypal/capture-order'
+        : '/api/payments/payfast/verify';
+      const body = pendingPayment.gateway === 'paypal'
+        ? { orderId: pendingPayment.orderId }
+        : { paymentId: pendingPayment.invoiceNumber };
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok || !['COMPLETED', 'PAID'].includes(String(data?.status).toUpperCase()) || data?.verified === false) {
+        throw new Error('Payment is not confirmed yet. Complete the gateway checkout, then try again.');
+      }
+      completePaidBoost(pendingPayment.invoiceNumber, pendingPayment.reference);
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Payment is not confirmed yet.');
     } finally {
       setIsProcessing(false);
     }
@@ -227,6 +256,7 @@ Thank you for promoting your business with Market Place Hub!
 
           {paymentStep === 'select' && (
             <>
+              {paymentError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">{paymentError}</div>}
               {/* Step 1: Select Boost Tier */}
               <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5">
@@ -299,7 +329,7 @@ Thank you for promoting your business with Market Place Hub!
                     <span className="text-xs font-normal text-slate-500">(Auto-configured for {currentCountry.name})</span>
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* PayFast */}
                     <button
                       type="button"
@@ -318,27 +348,6 @@ Thank you for promoting your business with Market Place Hub!
                       </div>
                       <p className="text-xs text-slate-500 leading-snug">
                         Instant EFT, Credit/Debit cards & Masterpass in South Africa.
-                      </p>
-                    </button>
-
-                    {/* Yoco */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedGateway('yoco')}
-                      className={`p-4 rounded-2xl border text-left transition-all ${
-                        selectedGateway === 'yoco'
-                          ? 'border-indigo-500 bg-indigo-50/50 shadow-xs ring-2 ring-indigo-500/20'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-extrabold text-sm text-slate-900">Yoco</div>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                          Cards & In-App
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Frictionless Visa & Mastercard card checkout for South Africa.
                       </p>
                     </button>
 
@@ -392,11 +401,20 @@ Thank you for promoting your business with Market Place Hub!
 
           {paymentStep === 'processing' && (
             <div className="py-12 text-center space-y-4">
-              <RefreshCw className="w-12 h-12 text-amber-500 animate-spin mx-auto" />
-              <h3 className="text-lg font-bold text-slate-900">Connecting to {selectedGateway.toUpperCase()}...</h3>
+              <RefreshCw className={`w-12 h-12 text-amber-500 mx-auto ${isProcessing ? 'animate-spin' : ''}`} />
+              <h3 className="text-lg font-bold text-slate-900">Complete your {selectedGateway.toUpperCase()} payment</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Securely verifying transaction parameters, generating tax invoice, and triggering live webhook listener...
+                The secure gateway checkout opened in a new tab. After payment, return here and confirm so the bump is activated.
               </p>
+              {paymentError && <div className="mx-auto max-w-sm rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">{paymentError}</div>}
+              <button
+                type="button"
+                onClick={handleVerifyPayment}
+                disabled={isProcessing}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-600/20 transition hover:bg-amber-700 disabled:opacity-60"
+              >
+                {isProcessing ? 'Verifying payment...' : 'I completed payment — activate bump'}
+              </button>
             </div>
           )}
 

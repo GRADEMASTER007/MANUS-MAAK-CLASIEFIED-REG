@@ -75,4 +75,21 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(dashboard).toContain("onUpdateListing");
     expect(app).toContain("handleUpdateListing");
   });
+
+  it("keeps the affordable bump catalog and seller checkout choices consistent", () => {
+    const plans = readProjectFile("src/data/initialData.ts");
+    const types = readProjectFile("src/types.ts");
+    const wizard = readProjectFile("src/components/PostListingWizard.tsx");
+    const server = readProjectFile("server.ts");
+
+    expect(plans).toContain("id: 'five_days'");
+    expect(plans).toContain("id: 'two_weeks'");
+    expect(plans).toContain("id: 'six_months'");
+    expect(plans).toContain("id: 'one_year'");
+    expect(types).toContain("platformCommissionRate?: number");
+    expect(wizard).toContain("5% platform fee");
+    expect(server).toContain("/api/payments/payfast/verify");
+    expect(server).toContain("/api/payments/paypal/capture-order");
+    expect(server).toContain("gateways: ['paypal', 'payfast']");
+  });
 });

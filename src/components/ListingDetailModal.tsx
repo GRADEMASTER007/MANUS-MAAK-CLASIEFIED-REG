@@ -495,6 +495,9 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
     window.open(`https://wa.me/${listing.vendor.whatsapp}?text=${message}`, '_blank');
   };
 
+  const canPlatformCheckout = listing.allowPlatformCheckout ?? listing.marketplaceDetails?.allowPlatformCheckout ?? false;
+  const platformCommissionRate = listing.platformCommissionRate ?? 0.05;
+
   const handlePlaceOrder = async () => {
     if (!profile) {
       alert('Please sign in to place an order.');
@@ -517,8 +520,8 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
         listingTitle: listing.title,
         listingImage: listing.images[0] || '',
         amount: listing.price,
-        commissionAmount: listing.price * 0.15,
-        sellerEarnings: listing.price * 0.85,
+        commissionAmount: listing.price * platformCommissionRate,
+        sellerEarnings: listing.price * (1 - platformCommissionRate),
         status: 'pending',
         currency: currentCountry.currencyCode,
         paymentType: 'platform',
@@ -983,7 +986,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
 
               {/* Transaction Options: Platform vs Private */}
               <div className="pt-3 flex flex-col gap-2">
-                {listing.marketplaceDetails?.allowPlatformCheckout && (
+                {canPlatformCheckout && (
                   <>
                     <button
                       id="platform-buy-now-btn"
@@ -1621,11 +1624,11 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
 
                 {/* Primary Contact CTAs */}
                 <div className="space-y-2 pt-2">
-                  {listing.pillar === 'marketplace' && listing.marketplaceDetails?.allowPlatformCheckout && (
+                  {canPlatformCheckout && (
                     <button
                       onClick={() => {
                         // Simulate Marketplace Checkout
-                        alert(`Initiating secure checkout for ${listing.title} via platform gateway. 15% commission will be applied.`);
+                        alert(`Initiating secure checkout for ${listing.title} via PayFast or PayPal. A 5% platform fee will be applied.`);
                         // In a real app, this would open a checkout modal or redirect
                       }}
                       className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20 transition-all active:scale-98"
@@ -1635,7 +1638,7 @@ export const ListingDetailModal: React.FC<ListingDetailModalProps> = ({
                     </button>
                   )}
 
-                  {listing.pillar === 'marketplace' && !listing.marketplaceDetails?.allowPlatformCheckout && (
+                  {!canPlatformCheckout && (
                     <div className="p-2.5 bg-slate-100 rounded-xl border border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider text-center mb-1">
                       Private Sale • Contact Below
                     </div>

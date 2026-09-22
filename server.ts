@@ -557,7 +557,7 @@ app.post('/api/ai/tts', async (req: Request, res: Response) => {
 // Helper to compute official PayFast MD5 signature
 function generatePayFastSignature(
   data: Record<string, string | number | undefined | null>,
-  passphrase: string = process.env.PAYFAST_PASSPHRASE || 'abCd15ab92g1233bc1223'
+  passphrase: string = process.env.PAYFAST_PASSPHRASE || ''
 ): string {
   let pfOutput = '';
   // PayFast requires specific order or non-empty fields trimmed and urlencoded (spaces as +)
@@ -580,36 +580,28 @@ function generatePayFastSignature(
 
 // Helper to obtain PayPal access token using OAuth2 client credentials
 async function getPayPalAccessToken(): Promise<string | null> {
-  const clientId = process.env.PAYPAL_CLIENT_ID || 'BAAk0DorZSaDyTQbbltBVp4mGPBPrPkVrHSdMGy4BBXgB8jhpzZdlEY9PZ24lsfPZGD6Ki6NPyGqjyGePc';
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET || 'EKfkUyx3qKyhX3VcZvxHZeGl1TJH0pIORvr2hBMzplRkzwC2B_-JU_fYbZkKDMlxWQRMcFwi2kEYhXpu';
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
-  // Try live PayPal endpoint, then fallback gracefully to sandbox
-  const endpoints = [
-    'https://api-m.paypal.com/v1/oauth2/token',
-    'https://api-m.sandbox.paypal.com/v1/oauth2/token'
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.access_token;
-      }
-    } catch (e) {
-      // Proceed to next fallback
-    }
+  try {
+    const endpoint = process.env.PAYPAL_ENVIRONMENT === 'sandbox'
+      ? 'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+      : 'https://api-m.paypal.com/v1/oauth2/token';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.access_token;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 // 6.1 Payment Gateway Config Endpoint
@@ -618,22 +610,19 @@ app.get('/api/payments/config', (req: Request, res: Response) => {
     status: 'success',
     paypal: {
       appName: process.env.PAYPAL_APP_NAME || 'ALL-FIREBASE',
-      clientId: process.env.VITE_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || 'BAAjZUGDxBtSmNvJX8YLup1nL32Zvx5CSrN0Q0JJJ-iucSQ--6NhpyWiEk_1ifMCdUxWFiEiz_-kLneSKM',
-      serverClientId: process.env.PAYPAL_CLIENT_ID || 'BAAk0DorZSaDyTQbbltBVp4mGPBPrPkVrHSdMGy4BBXgB8jhpzZdlEY9PZ24lsfPZGD6Ki6NPyGqjyGePc',
+      clientId: process.env.PAYPAL_CLIENT_ID || null,
       currency: 'USD',
       supportedCurrencies: ['USD', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'JPY'],
       mode: 'production',
     },
     payfast: {
-      merchantId: process.env.PAYFAST_MERCHANT_ID || '11071120',
-      merchantKey: process.env.PAYFAST_MERCHANT_KEY || 'p6fi9ewdjk1js',
-      email: process.env.PAYFAST_EMAIL || 'waterkefirsa@gmail.com',
-      pdtKey: process.env.PAYFAST_PDT_KEY || 'f6657bf6-9300-5637-364b-6608b202628d',
+      merchantId: process.env.PAYFAST_MERCHANT_ID || null,
+      email: process.env.PAYFAST_EMAIL || null,
       currency: 'ZAR',
       mode: 'live',
       processUrl: 'https://www.payfast.co.za/eng/process',
     },
-    gateways: ['paypal', 'payfast', 'yoco'],
+    gateways: ['paypal', 'payfast'],
   });
 });
 
@@ -702,7 +691,11 @@ app.post('/api/payments/paypal/capture-order', async (req: Request, res: Respons
   const { orderId } = req.body;
   const token = await getPayPalAccessToken();
 
-  if (token && orderId && !orderId.startsWith('PAYPAL_ORD_')) {
+  if (!token || !orderId) {
+    return res.status(503).json({ status: 'error', error: 'PayPal capture is not configured or the order is missing.' });
+  }
+
+  if (!orderId.startsWith('PAYPAL_ORD_')) {
     try {
       const captureRes = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
@@ -725,12 +718,7 @@ app.post('/api/payments/paypal/capture-order', async (req: Request, res: Respons
     }
   }
 
-  return res.json({
-    status: 'COMPLETED',
-    orderId,
-    captureId: `CAP_${Date.now()}`,
-    verified: true,
-  });
+  return res.status(502).json({ status: 'error', error: 'PayPal did not confirm the order.' });
 });
 
 // 6.4 PayFast Payment Generator Endpoint (Live & Signed MD5)
@@ -746,10 +734,13 @@ app.post('/api/payments/payfast/generate-payment', (req: Request, res: Response)
     cancelUrl,
   } = req.body;
 
-  const merchantId = process.env.PAYFAST_MERCHANT_ID || '11071120';
-  const merchantKey = process.env.PAYFAST_MERCHANT_KEY || 'p6fi9ewdjk1js';
-  const passphrase = process.env.PAYFAST_PASSPHRASE || 'abCd15ab92g1233bc1223';
-  const defaultEmail = process.env.PAYFAST_EMAIL || 'waterkefirsa@gmail.com';
+  const merchantId = process.env.PAYFAST_MERCHANT_ID;
+  const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
+  const passphrase = process.env.PAYFAST_PASSPHRASE;
+  const defaultEmail = process.env.PAYFAST_EMAIL;
+  if (!merchantId || !merchantKey || !passphrase || !defaultEmail) {
+    return res.status(503).json({ status: 'error', error: 'PayFast is not configured on the server.' });
+  }
 
   const mPaymentId = invoiceNumber || `PF_${Date.now()}`;
   const formattedAmount = Number(amount || 0).toFixed(2);
@@ -781,8 +772,8 @@ app.post('/api/payments/payfast/generate-payment', (req: Request, res: Response)
     meta: {
       merchantId,
       merchantEmail: defaultEmail,
-      pdtKey: process.env.PAYFAST_PDT_KEY || 'f6657bf6-9300-5637-364b-6608b202628d',
-      passphraseConfigured: !!passphrase,
+      pdtKeyConfigured: Boolean(process.env.PAYFAST_PDT_KEY),
+      passphraseConfigured: true,
     },
   });
 });
@@ -790,7 +781,7 @@ app.post('/api/payments/payfast/generate-payment', (req: Request, res: Response)
 // 6.5 PayFast ITN (Instant Transaction Notification) & PDT Verification
 app.post('/api/payments/payfast/notify', (req: Request, res: Response) => {
   const pfData = req.body;
-  const passphrase = process.env.PAYFAST_PASSPHRASE || 'abCd15ab92g1233bc1223';
+  const passphrase = process.env.PAYFAST_PASSPHRASE || '';
 
   // Verify signature
   const checkSig = generatePayFastSignature(pfData, passphrase);
@@ -802,8 +793,39 @@ app.post('/api/payments/payfast/notify', (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
+// 6.5b PayFast PDT verification for the buyer return flow.
+app.post('/api/payments/payfast/verify', async (req: Request, res: Response) => {
+  const { paymentId } = req.body;
+  const merchantId = process.env.PAYFAST_MERCHANT_ID;
+  const pdtKey = process.env.PAYFAST_PDT_KEY;
+  if (!merchantId || !pdtKey || !paymentId) {
+    return res.status(503).json({ status: 'error', error: 'PayFast verification is not configured.' });
+  }
+
+  try {
+    const response = await fetch('https://www.payfast.co.za/eng/query/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        m_payment_id: String(paymentId),
+        merchant_id: merchantId,
+        passphrase: pdtKey,
+      }).toString(),
+    });
+    const body = (await response.text()).trim();
+    return res.json({
+      status: response.ok && body.toUpperCase().includes('VALID') ? 'COMPLETED' : 'PENDING',
+      paymentId,
+      verified: response.ok && body.toUpperCase().includes('VALID'),
+    });
+  } catch (error) {
+    console.error('PayFast verification error:', error);
+    return res.status(502).json({ status: 'error', error: 'PayFast verification unavailable.' });
+  }
+});
+
 // 6.6 Universal Payment Checkout Dispatcher
-app.post('/api/payments/checkout', (req: Request, res: Response) => {
+app.post('/api/payments/checkout', async (req: Request, res: Response) => {
   const { gateway = 'paypal', listingId, planId, amount, currency, countryCode, returnUrl, buyerEmail, buyerName } = req.body;
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${countryCode || 'INT'}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -820,10 +842,13 @@ app.post('/api/payments/checkout', (req: Request, res: Response) => {
   };
 
   if (gateway === 'payfast') {
-    const merchantId = process.env.PAYFAST_MERCHANT_ID || '11071120';
-    const merchantKey = process.env.PAYFAST_MERCHANT_KEY || 'p6fi9ewdjk1js';
-    const passphrase = process.env.PAYFAST_PASSPHRASE || 'abCd15ab92g1233bc1223';
-    const defaultEmail = process.env.PAYFAST_EMAIL || 'waterkefirsa@gmail.com';
+    const merchantId = process.env.PAYFAST_MERCHANT_ID;
+    const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
+    const passphrase = process.env.PAYFAST_PASSPHRASE;
+    const defaultEmail = process.env.PAYFAST_EMAIL;
+    if (!merchantId || !merchantKey || !passphrase || !defaultEmail) {
+      return res.status(503).json({ status: 'error', error: 'PayFast is not configured on the server.' });
+    }
 
     const pfFields: Record<string, string | number> = {
       merchant_id: merchantId,
@@ -849,26 +874,62 @@ app.post('/api/payments/checkout', (req: Request, res: Response) => {
         signature,
       },
       merchantEmail: defaultEmail,
-      pdtKey: process.env.PAYFAST_PDT_KEY || 'f6657bf6-9300-5637-364b-6608b202628d',
+      pdtKeyConfigured: Boolean(process.env.PAYFAST_PDT_KEY),
     };
   } else if (gateway === 'paypal') {
-    const clientId = process.env.VITE_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || 'BAAjZUGDxBtSmNvJX8YLup1nL32Zvx5CSrN0Q0JJJ-iucSQ--6NhpyWiEk_1ifMCdUxWFiEiz_-kLneSKM';
-    checkoutPayload = {
-      ...checkoutPayload,
-      clientId,
-      appName: process.env.PAYPAL_APP_NAME || 'ALL-FIREBASE',
-      currency: currency || 'USD',
-      orderId: `PAYPAL_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
-      approvalUrl: `https://www.paypal.com/checkoutnow?token=EC-${Math.floor(100000000 + Math.random() * 900000000)}`,
-    };
-  } else if (gateway === 'yoco') {
-    checkoutPayload = {
-      ...checkoutPayload,
-      publicKey: 'pk_test_ed3c54a6gOol69qa7f45',
-      amountInCents: Math.round(Number(amount) * 100),
-      currency: 'ZAR',
-      metadata: { listingId, planId, invoiceNumber },
-    };
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const token = await getPayPalAccessToken();
+    if (!clientId || !token) {
+      return res.status(503).json({ status: 'error', error: 'PayPal is not configured or unavailable.' });
+    }
+    const paypalBase = process.env.PAYPAL_ENVIRONMENT === 'sandbox'
+      ? 'https://api-m.sandbox.paypal.com'
+      : 'https://api-m.paypal.com';
+    try {
+      const orderRes = await fetch(`${paypalBase}/v2/checkout/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          intent: 'CAPTURE',
+          purchase_units: [{
+            reference_id: invoiceNumber,
+            description: `Market Place Hub Listing Boost: ${planId || 'standard'}`,
+            amount: {
+              currency_code: currency || 'USD',
+              value: Number(amount).toFixed(2),
+            },
+          }],
+          application_context: {
+            brand_name: process.env.PAYPAL_APP_NAME || 'ALL-FIREBASE',
+            user_action: 'PAY_NOW',
+            return_url: returnUrl || 'https://marketplacehub.company/payment/success',
+            cancel_url: 'https://marketplacehub.company/payment/cancel',
+          },
+        }),
+      });
+      if (!orderRes.ok) {
+        const details = await orderRes.text();
+        console.error('PayPal order creation failed:', orderRes.status, details);
+        return res.status(502).json({ status: 'error', error: 'PayPal could not create the order.' });
+      }
+      const orderData = await orderRes.json();
+      const approvalUrl = orderData.links?.find((link: { rel?: string }) => link.rel === 'approve')?.href;
+      checkoutPayload = {
+        ...checkoutPayload,
+        clientId,
+        appName: process.env.PAYPAL_APP_NAME || 'ALL-FIREBASE',
+        orderId: orderData.id,
+        approvalUrl,
+      };
+    } catch (error) {
+      console.error('PayPal order creation error:', error);
+      return res.status(502).json({ status: 'error', error: 'PayPal could not create the order.' });
+    }
+  } else {
+    return res.status(400).json({ status: 'error', error: 'Unsupported payment gateway.' });
   }
 
   res.json({

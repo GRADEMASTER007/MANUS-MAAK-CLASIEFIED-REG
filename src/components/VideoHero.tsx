@@ -78,27 +78,27 @@ export const VideoHero: React.FC<VideoHeroProps> = ({
   };
 
   return (
-    <section className="hero-shell relative w-full overflow-hidden bg-slate-950 text-white">
-      <video key={currentHero.videoSrc} autoPlay muted loop playsInline poster={currentHero.poster} className="absolute inset-0 h-full w-full object-cover opacity-40 scale-105 motion-safe:transition-opacity duration-1000">
+    <section className="hero-shell relative w-full overflow-hidden bg-[#f6fbff] text-slate-900">
+      <video key={currentHero.videoSrc} autoPlay muted loop playsInline poster={currentHero.poster} className="absolute inset-0 h-full w-full object-cover opacity-[0.16] scale-105 motion-safe:transition-opacity duration-1000">
         <source src={currentHero.videoSrc} type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(245,158,11,0.24),transparent_31%),linear-gradient(108deg,rgba(2,6,23,0.98)_12%,rgba(2,6,23,0.82)_54%,rgba(2,6,23,0.45)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(251,191,36,0.38),transparent_28%),radial-gradient(circle_at_8%_80%,rgba(45,212,191,0.22),transparent_30%),linear-gradient(108deg,rgba(246,251,255,0.98)_10%,rgba(239,248,255,0.9)_55%,rgba(255,247,237,0.72)_100%)]" />
       <div className="absolute inset-0 opacity-30 hero-grid" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 md:grid-cols-[minmax(0,1.1fr)_320px] md:py-20 lg:gap-20">
         <div>
-          <button onClick={onOpenCountryModal} className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white/90 backdrop-blur-md transition hover:bg-white/15">
+          <button onClick={onOpenCountryModal} className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur-md transition hover:bg-white">
             <span className="text-lg leading-none">{currentCountry.flag}</span>
             <span>Browsing {currentCountry.name}</span>
-            <span className="font-mono text-amber-300">{currentCountry.subdomain}.marketplacehub.company</span>
-            <ArrowUpRight className="h-3.5 w-3.5 text-amber-300" />
+            <span className="font-mono text-teal-700">{currentCountry.subdomain}.marketplacehub.company</span>
+            <ArrowUpRight className="h-3.5 w-3.5 text-teal-600" />
           </button>
 
-          <div className="mb-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-300">
-            <span className="h-px w-8 bg-amber-400" /> Marketplace Hub <span className="text-white/40">/</span> Business Directory
+          <div className="mb-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.24em] text-orange-600">
+            <span className="h-px w-8 bg-orange-400" /> Marketplace Hub <span className="text-slate-400">/</span> Business Directory
           </div>
-          <h1 className="max-w-3xl font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">{currentHero.title}</h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">{currentHero.subtitle}</p>
+          <h1 className="max-w-3xl font-display text-4xl font-extrabold leading-[1.02] tracking-[-0.05em] text-slate-950 sm:text-6xl lg:text-7xl">{currentHero.title}</h1>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">{currentHero.subtitle}</p>
 
           <form onSubmit={handleSubmit} className="mt-8 max-w-3xl rounded-2xl border border-white/30 bg-white p-2 shadow-2xl shadow-black/30 sm:flex sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
@@ -117,7 +117,7 @@ export const VideoHero: React.FC<VideoHeroProps> = ({
 
         <div className="hero-visual-rail hidden md:block">
           <div className="hero-photo-card hero-photo-card-main" style={{ backgroundImage: `url(${currentHero.poster})` }}>
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
             <div className="relative flex h-full flex-col justify-between p-5">
               <div className="flex items-center justify-between"><span className="rounded-full bg-emerald-400/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-200 backdrop-blur">Live regional discovery</span><ArrowUpRight className="h-5 w-5 text-white/80" /></div>
               <div><p className="text-xs text-white/70">One hub. More ways to grow.</p><p className="mt-1 font-display text-2xl font-bold text-white">Built for the next move.</p></div>
@@ -128,7 +128,7 @@ export const VideoHero: React.FC<VideoHeroProps> = ({
         </div>
       </div>
 
-      <div className="relative z-10 border-t border-white/10 bg-slate-950/35 backdrop-blur-sm"><div className="mx-auto flex max-w-7xl flex-wrap gap-x-8 gap-y-3 px-4 py-4 text-xs text-slate-300 sm:px-6"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> KYC-ready business profiles</span><span className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-400" /> PayFast, Yoco & PayPal-ready checkout</span><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-sky-400" /> Africa + UAE regional reach</span><span className="ml-auto hidden items-center gap-2 font-semibold text-white/70 lg:flex">Explore the network <ArrowRight className="h-4 w-4 text-amber-300" /></span></div></div>
+      <div className="relative z-10 border-t border-white/70 bg-white/65 backdrop-blur-sm"><div className="mx-auto flex max-w-7xl flex-wrap gap-x-8 gap-y-3 px-4 py-4 text-xs text-slate-600 sm:px-6"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-500" /> KYC-ready business profiles</span><span className="flex items-center gap-2"><Zap className="h-4 w-4 text-orange-500" /> PayFast & PayPal checkout</span><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-sky-500" /> Africa + UAE regional reach</span><span className="ml-auto hidden items-center gap-2 font-semibold text-slate-700 lg:flex">Explore the network <ArrowRight className="h-4 w-4 text-orange-500" /></span></div></div>
     </section>
   );
 };

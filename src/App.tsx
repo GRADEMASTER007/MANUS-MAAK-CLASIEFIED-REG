@@ -91,7 +91,7 @@ import {
   INITIAL_COMMISSION_RULES as initialCommissionRules,
   INITIAL_AD_CAMPAIGNS as initialAds
 } from './data/initialData';
-import { Category, Country, Listing, PillarType, Transaction, Review, SavedSearchAlert, Order, LedgerEntry, CommissionRule, AdCampaign, BoostPlan } from './types';
+import { Category, Country, Listing, PillarType, Transaction, Review, SavedSearchAlert, Order, LedgerEntry, CommissionRule, AdCampaign, BoostPlan, BoostTierId } from './types';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -231,6 +231,30 @@ function distanceBetweenKm(a: { lat: number; lng: number }, b: { lat: number; ln
     + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(lngDelta / 2) ** 2;
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
+
+const BOOST_DURATION_DAYS: Record<BoostTierId, number> = {
+  free: 30,
+  bump: 1,
+  five_days: 5,
+  two_weeks: 14,
+  week: 7,
+  month: 30,
+  three_months: 90,
+  six_months: 180,
+  one_year: 365,
+};
+
+const BOOST_RANK: Record<BoostTierId, number> = {
+  free: 0,
+  bump: 25,
+  five_days: 50,
+  week: 60,
+  two_weeks: 75,
+  month: 100,
+  three_months: 250,
+  six_months: 350,
+  one_year: 500,
+};
 
 export function App() {
   const { profile, signIn, signOut } = useAuth();
@@ -574,18 +598,14 @@ export function App() {
   // Handler when listing boost is purchased & confirmed
   const handleActivateBoost = async (
     listingId: string,
-    planId: 'free' | 'bump' | 'week' | 'month' | 'three_months',
+    planId: BoostTierId,
     newTx: Transaction
   ) => {
     let updatedListing: Listing | undefined;
     setListings((prev) =>
       prev.map((l) => {
         if (l.id === listingId) {
-          const durationDays = 
-            planId === 'three_months' ? 90 : 
-            planId === 'month' ? 30 : 
-            planId === 'week' ? 7 : 
-            planId === 'bump' ? 1 : 0;
+          const durationDays = BOOST_DURATION_DAYS[planId];
           const u: Listing = {
             ...l,
             featuredTier: planId,
@@ -646,17 +666,8 @@ export function App() {
       return;
     }
 
-    // Determine commission rule based on pillar
-    const rule = commissionRules.find((r) => r.pillar === listing.pillar) || 
-                 commissionRules.find((r) => r.pillar === 'marketplace') || 
-                 { ruleType: 'percentage', percentage: 0.15 };
-    
-    let commission = 0;
-    if (rule.ruleType === 'percentage') {
-      commission = listing.price * (rule.percentage || 0.15);
-    } else if (rule.ruleType === 'fixed') {
-      commission = rule.fixedFee || 0;
-    }
+    const commissionRate = listing.platformCommissionRate ?? 0.05;
+    const commission = listing.price * commissionRate;
 
     const orderId = `ORD-${Date.now()}`;
     const invoiceNumber = `INV-${new Date().getFullYear()}-${currentCountry.isoCode}-SALE-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -832,13 +843,7 @@ export function App() {
     }).sort((a, b) => {
       // Primary Boost Ranking weight
       if (sortBy === 'boost') {
-        const tierRank: Record<string, number> = {
-          three_months: 3,
-          month: 2,
-          week: 1,
-          free: 0,
-        };
-        const rankDiff = (tierRank[b.featuredTier] || 0) - (tierRank[a.featuredTier] || 0);
+        const rankDiff = BOOST_RANK[b.featuredTier] - BOOST_RANK[a.featuredTier];
         if (rankDiff !== 0) return rankDiff;
         return b.views - a.views;
       }
@@ -861,7 +866,7 @@ export function App() {
 
   // VIP Spotlight Carousel listings (top tier boosted)
   const vipSpotlightListings = useMemo(() => {
-    return listings.filter((l) => l.featuredTier === 'three_months' || l.featuredTier === 'month');
+    return listings.filter((l) => BOOST_RANK[l.featuredTier] >= BOOST_RANK.month);
   }, [listings]);
 
   // Available unique cities for filter dropdown
