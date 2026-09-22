@@ -23,4 +23,12 @@ describe("Marketplace Hub permanent site shell", () => {
     expect(boostModal).toContain("PayPal");
     expect(boostModal).toContain("/api/payments/checkout");
   });
+
+  it("keeps frontend assets in the managed hosting upload directory", () => {
+    const viteConfig = readProjectFile("vite.config.ts");
+    const server = readProjectFile("server.ts");
+
+    expect(viteConfig).toContain("outDir: 'dist/public'");
+    expect(server).toContain("path.join(process.cwd(), 'dist', 'public')");
+  });
 });
